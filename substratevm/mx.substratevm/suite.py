@@ -830,6 +830,9 @@ suite = {
                     "jdk.internal.misc",
                     "sun.security.jca",
                 ],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                ]
             },
             "checkstyle": "com.oracle.svm.test",
             "checkstyleVersion" : "10.7.0",
