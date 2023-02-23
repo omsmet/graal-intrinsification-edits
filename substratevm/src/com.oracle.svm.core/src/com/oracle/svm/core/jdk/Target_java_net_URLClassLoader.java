@@ -25,8 +25,6 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.Closeable;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.AccessControlContext;
@@ -79,9 +77,4 @@ final class Target_java_net_URLClassLoader {
     @Alias//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = WeakHashMap.class)//
     private WeakHashMap<Closeable, Void> closeables;
-
-    @Substitute
-    public InputStream getResourceAsStream(String name) throws IOException {
-        return Resources.createInputStream(name);
-    }
 }
