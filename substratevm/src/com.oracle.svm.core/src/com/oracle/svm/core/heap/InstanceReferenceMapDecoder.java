@@ -29,15 +29,17 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 import com.oracle.svm.core.util.TypedMemoryReader;
 
 @DuplicatedInNativeCode
 public class InstanceReferenceMapDecoder {
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean walkOffsetsFromPointer(Pointer baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor, Object holderObject) {
         assert ReferenceMapIndex.denotesValidReferenceMap(referenceMapIndex);
         assert referenceMapEncoding.isNonNull();
@@ -61,7 +63,7 @@ public class InstanceReferenceMapDecoder {
 
             Pointer objRef = baseAddress.add(offset);
             for (int c = 0; c < count; c++) {
-                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed, holderObject);
+                final boolean visitResult = callVisitor(visitor, holderObject, compressed, objRef);
                 if (!visitResult) {
                     return false;
                 }
@@ -69,5 +71,10 @@ public class InstanceReferenceMapDecoder {
             }
         }
         return true;
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean callVisitor(ObjectReferenceVisitor visitor, Object holderObject, boolean compressed, Pointer objRef) {
+        return visitor.visitObjectReferenceInline(objRef, 0, compressed, holderObject);
     }
 }

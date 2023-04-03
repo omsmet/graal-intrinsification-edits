@@ -26,6 +26,8 @@ package com.oracle.svm.core.util;
 
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.Uninterruptible;
+
 public class TypedMemoryReader {
     public static int getS1(Pointer ptr) {
         return ptr.readByte(0);
@@ -35,6 +37,7 @@ public class TypedMemoryReader {
         return ptr.readShort(0);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getS4(Pointer ptr) {
         return ptr.readInt(0);
     }
@@ -51,6 +54,7 @@ public class TypedMemoryReader {
         return getS2(ptr) & 0xFFFF;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getU4(Pointer ptr) {
         return getS4(ptr) & 0xFFFFFFFFL;
     }
