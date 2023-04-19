@@ -74,6 +74,7 @@ public class TruffleInvocationPlugins {
         if (architecture instanceof AMD64 || architecture instanceof AArch64) {
             registerTStringPlugins(plugins, replacements);
             registerArrayUtilsPlugins(plugins, replacements);
+            registerGpMicrobenchPlugins(plugins, replacements);
         }
     }
 
@@ -498,5 +499,63 @@ public class TruffleInvocationPlugins {
             b.addPush(JavaKind.Int, new ArrayIndexOfNode(constStride, variant, null, locationIdentity, array, offset, length, fromIndex, values));
         }
         return true;
+    }
+
+    /**
+     * Compiler hacks for GP-Microbenches
+     */
+    private static void registerGpMicrobenchPlugins(InvocationPlugins plugins, Replacements replacements) {
+        registerGpMicrobenchPluginsForStringBenchWithIndexOfSIMDed(plugins, replacements);
+        registerGpMicrobenchPluginsForStringBenchWithIndexOfAndLexiCompSIMDed(plugins, replacements);
+    }
+
+    private static void registerGpMicrobenchPluginsForStringBenchWithIndexOfSIMDed(InvocationPlugins plugins, Replacements replacements) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lnl/sequbit/gp/SIMD_string/String_Selectivity_SIMD_IndexOf_Non_SIMD_Compare;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "nl.sequbit.gp.SIMD_string.String_Selectivity_SIMD_IndexOf_Non_SIMD_Compare", replacements);
+
+        // Modified runIndexOfAny1
+        r.register(new InlineOnlyInvocationPlugin("nextStringEnd", Object.class, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                                 ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0) {
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchAny, location, array, offset, length, stride, isNative, fromIndex, v0);
+            }
+        });
+    }
+
+    private static void registerGpMicrobenchPluginsForStringBenchWithIndexOfAndLexiCompSIMDed(InvocationPlugins plugins, Replacements replacements) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lnl/sequbit/gp/SIMD_string/String_Selectivity_SIMD_IndexOf_SIMD_Compare;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "nl.sequbit.gp.SIMD_string.String_Selectivity_SIMD_IndexOf_SIMD_Compare", replacements);
+
+        // Modified runIndexOfAny1
+        r.register(new InlineOnlyInvocationPlugin("nextStringEnd", Object.class, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                                 ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0) {
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchAny, location, array, offset, length, stride, isNative, fromIndex, v0);
+            }
+        });
+
+        // Modified runMemCmp
+        r.register(new InlineOnlyInvocationPlugin("lexicographicCompare", Object.class,
+                byte[].class, long.class, boolean.class,
+                byte[].class, long.class, boolean.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                                 ValueNode arrayA, ValueNode offsetA, ValueNode isNativeA,
+                                 ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length, ValueNode dynamicStrides) {
+                LocationIdentity locationIdentity = inferLocationIdentity(isNativeA, isNativeB, false);
+                if (dynamicStrides.isJavaConstant()) {
+                    int directStubCallIndex = dynamicStrides.asJavaConstant().asInt();
+                    b.addPush(JavaKind.Int, new ArrayRegionCompareToNode(arrayA, offsetA, arrayB, offsetB, length,
+                            StrideUtil.getConstantStrideA(directStubCallIndex),
+                            StrideUtil.getConstantStrideB(directStubCallIndex),
+                            locationIdentity));
+                } else {
+                    b.addPush(JavaKind.Int, new ArrayRegionCompareToNode(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, locationIdentity));
+                }
+                return true;
+            }
+        });
     }
 }
