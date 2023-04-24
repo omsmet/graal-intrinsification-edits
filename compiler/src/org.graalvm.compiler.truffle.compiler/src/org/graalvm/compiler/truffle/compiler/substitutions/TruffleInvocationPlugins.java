@@ -509,6 +509,7 @@ public class TruffleInvocationPlugins {
         registerGpMicrobenchPluginsForStringBenchWithIndexOfAndLexiCompSIMDed(plugins, replacements);
         registerGpMicrobenchPluginsForNumberBenchInt(plugins, replacements);
         registerGpMicrobenchPluginsForNumberBenchLong(plugins, replacements);
+        registerGpMicrobenchPluginsForNumberBenchEqualityInt(plugins, replacements);
     }
 
     private static void registerGpMicrobenchPluginsForStringBenchWithIndexOfSIMDed(InvocationPlugins plugins, Replacements replacements) {
@@ -585,6 +586,20 @@ public class TruffleInvocationPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                                  ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0, ValueNode v1, ValueNode v2, ValueNode v3) {
                 return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.FindTwoConsecutiveWithMask, location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
+            }
+        });
+    }
+
+    private static void registerGpMicrobenchPluginsForNumberBenchEqualityInt(InvocationPlugins plugins, Replacements replacements) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lnl/sequbit/gp/SIMD_numbers/Number_Equality_SIMD_IndexOf_Int;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "nl.sequbit.gp.SIMD_numbers.Number_Equality_SIMD_IndexOf_Int", replacements);
+
+        // Modified runIndexOfAny1
+        r.register(new InlineOnlyInvocationPlugin("nextMatch", Object.class, byte[].class, long.class, int.class, int.class, boolean.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
+                                 ValueNode array, ValueNode offset, ValueNode length, ValueNode stride, ValueNode isNative, ValueNode fromIndex, ValueNode v0) {
+                return applyIndexOf(b, targetMethod, ArrayIndexOfVariant.MatchAny, location, array, offset, length, stride, isNative, fromIndex, v0);
             }
         });
     }
