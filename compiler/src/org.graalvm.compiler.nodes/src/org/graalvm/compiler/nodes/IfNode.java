@@ -73,6 +73,7 @@ import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -128,6 +129,26 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         this.falseSuccessor = falseSuccessor;
         this.trueSuccessor = trueSuccessor;
         this.profileData = profileData;
+
+        // Select only the IfNodes from our own query
+        if (this.condition != null && this.condition.graph() != null && this.condition.graph().compilationId() != null
+            && this.condition.graph().compilationId().toString().contains("executeFilterQuery")) {
+
+            // Attempt to select the first if statement of the query (if col1 >= 3000)
+            if (!(this.condition instanceof IntegerLessThanNode))
+                return;
+
+            IntegerLessThanNode iltCondition = (IntegerLessThanNode) this.condition;
+            if (!(iltCondition.x instanceof LoadIndexedNode))
+                return;
+
+            LoadIndexedNode iltConditionXLoadIndexed = (LoadIndexedNode) iltCondition.x;
+            if (iltConditionXLoadIndexed.array().toString().contains("LoadField#col1")) {
+                // Found it, replace condition by injected probability instead of profiled probability
+                this.profileData = BranchProbabilityData.create(profileData.getDesignatedSuccessorProbability(), ProfileSource.INJECTED);
+            }
+        }
+
     }
 
     /**
