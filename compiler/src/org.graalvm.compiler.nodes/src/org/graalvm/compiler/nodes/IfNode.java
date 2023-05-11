@@ -139,13 +139,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 return;
 
             IntegerLessThanNode iltCondition = (IntegerLessThanNode) this.condition;
-            if (!(iltCondition.x instanceof LoadIndexedNode))
+            if (!(iltCondition.x instanceof LoadFieldNode))
                 return;
 
-            LoadIndexedNode iltConditionXLoadIndexed = (LoadIndexedNode) iltCondition.x;
-            if (iltConditionXLoadIndexed.array().toString().contains("LoadField#col1")) {
+            LoadFieldNode iltConditionXLoadField = (LoadFieldNode) iltCondition.x;
+            if (iltConditionXLoadField.toString().contains("LoadField#col1")) {
                 // Found it, replace condition by injected probability instead of profiled probability
-                this.profileData = BranchProbabilityData.create(0.02d, ProfileSource.INJECTED);
+                this.profileData = BranchProbabilityData.create(0.02, ProfileSource.INJECTED);
             }
         }
 
