@@ -145,7 +145,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             LoadIndexedNode iltConditionXLoadIndexed = (LoadIndexedNode) iltCondition.x;
             if (iltConditionXLoadIndexed.array().toString().contains("LoadField#col1")) {
                 // Found it, replace condition by injected probability instead of profiled probability
-                this.profileData = BranchProbabilityData.create(profileData.getDesignatedSuccessorProbability(), ProfileSource.INJECTED);
+                this.profileData = BranchProbabilityData.create(0.02d, ProfileSource.INJECTED);
             }
         }
 
